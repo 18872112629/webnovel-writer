@@ -95,9 +95,9 @@ def rollback(self, chapter: int) -> bool:
 - Modify: `webnovel-writer/scripts/data_modules/migrate_state_to_sqlite.py:235-258`
 - Test: `webnovel-writer/scripts/data_modules/tests/test_migrate_state_to_sqlite.py`
 
-- [ ] **Step 1: 写测试**：构造一条会迁移失败的实体（如非法类型触发 `stats["errors"] += 1`），跑迁移，断言 state.json 中 `entities_v3` 字段仍在、CLI 退出码非 0。
-- [ ] **Step 2: 实现**：`if stats["errors"]: 跳过步骤5精简，输出"存在迁移错误，已保留原字段"`；步骤 5 的裸 `open('w')+json.dump` 改为 `security_utils.atomic_write_json(state_path, state, use_lock=True)`。
-- [ ] **Step 3: 提交** `fix: migration never prunes state on partial failure`。
+- [x] **Step 1: 写测试**：构造一条会迁移失败的实体（如非法类型触发 `stats["errors"] += 1`），跑迁移，断言 state.json 中 `entities_v3` 字段仍在、CLI 退出码非 0。
+- [x] **Step 2: 实现**：`if stats["errors"]: 跳过步骤5精简，输出"存在迁移错误，已保留原字段"`；步骤 5 的裸 `open('w')+json.dump` 改为 `security_utils.atomic_write_json(state_path, state, use_lock=True)`。
+- [x] **Step 3: 提交** `fix: migration never prunes state on partial failure`。
 
 ### Task 6: archive_manager 原子写 + 恢复顺序反转
 
