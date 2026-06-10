@@ -272,60 +272,49 @@ __pycache__/
 
     def rollback(self, chapter_num: int) -> bool:
         """
-        回滚到指定章节（Git checkout）
-
-        ⚠️ 警告：这会丢弃所有未提交的变更！
+        前滚式恢复到指定章节（在当前分支创建恢复提交）
         """
 
         tag_name = f"ch{chapter_num:04d}"
 
         print(f"🔄 正在回滚到第 {chapter_num} 章...")
-        print(f"⚠️  警告：这将丢弃所有未提交的变更！")
+        print("💾 将在当前分支创建一个恢复提交，历史不会丢失")
 
-        # 检查是否有未提交的变更
-        success, status_output, status_error = self._run_git_command(["status", "--porcelain"], check=False)
+        success, _, error = self._run_git_command(["rev-parse", "--verify", tag_name], check=False)
         if not success:
-            print(f"❌ 读取 Git 状态失败: {self._format_git_output(status_output, status_error)}")
+            print(f"❌ 备份点 {tag_name} 不存在")
             return False
 
-        if status_output.strip():
-            print("\n⚠️  检测到未提交的变更：")
-            print(status_output)
+        success, branch, branch_error = self._run_git_command(["symbolic-ref", "--short", "HEAD"], check=False)
+        if not success or not branch.strip():
+            print(f"❌ 当前不在分支上，无法创建前滚恢复提交: {self._format_git_output(branch, branch_error)}")
+            return False
 
-            # 创建备份提交
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_branch = f"backup_before_rollback_{timestamp}"
-
-            print(f"\n💾 正在创建备份分支: {backup_branch}")
-
-            success, _, _ = self._run_git_command(["checkout", "-b", backup_branch], check=False)
-            if not success:
-                print("❌ 创建备份分支失败")
-                return False
-
-            success, _, _ = self._run_git_command(["add", "."], check=False)
-            success, _, _ = self._run_git_command(
-                ["commit", "-m", f"Backup before rollback to chapter {chapter_num}"],
-                check=False,
-            )
-
-            print(f"✅ 备份分支已创建: {backup_branch}")
-
-            # 切换回 master
-            success, _, _ = self._run_git_command(["checkout", "master"], check=False)
-
-        # 执行回滚
-        success, stdout, stderr = self._run_git_command(["checkout", tag_name], check=False)
+        success, stdout, stderr = self._run_git_command(["checkout", tag_name, "--", "."], check=False)
 
         if not success:
             print(f"❌ 回滚失败: {self._format_git_output(stdout, stderr)}")
             print(f"💡 提示：确保 tag '{tag_name}' 存在（运行 --list 查看所有备份）")
             return False
 
-        print(f"✅ 已回滚到第 {chapter_num} 章！")
+        success, stdout, stderr = self._run_git_command(["add", "-A"], check=False)
+        if not success:
+            print(f"❌ 回滚失败: {self._format_git_output(stdout, stderr)}")
+            return False
+
+        success, stdout, stderr = self._run_git_command(
+            ["commit", "-m", f"rollback: 恢复到 {tag_name} 备份点"],
+            check=False,
+        )
+        commit_output = self._format_git_output(stdout, stderr)
+        if not success and "nothing to commit" not in commit_output.lower():
+            print(f"❌ 回滚提交失败: {commit_output}")
+            return False
+
+        print(f"✅ 已在 {branch.strip()} 分支恢复到第 {chapter_num} 章！")
         print(f"\n💡 提示:")
-        print(f"  - 所有文件（state.json + 正文/*.md）已同步回滚")
-        print(f"  - 如需恢复，运行: git checkout master")
+        print(f"  - 所有文件（state.json + 正文/*.md）已同步恢复")
+        print(f"  - 历史提交保留，可用 git log 查看恢复记录")
 
         return True
 

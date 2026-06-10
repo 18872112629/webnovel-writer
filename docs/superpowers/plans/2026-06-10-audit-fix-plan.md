@@ -47,8 +47,8 @@ def _run_git_command(self, args, check=True):
 - Modify: `webnovel-writer/scripts/backup_manager.py:294-307`
 - Test: `webnovel-writer/scripts/tests/test_backup_manager.py`
 
-- [ ] **Step 1: 写测试**：建 tmp 仓库（默认分支命名为 `main`），打两个 ch tag，回滚到 ch1 后断言：(a) 仍在原分支（`git symbolic-ref HEAD` 成功且为 main）；(b) 工作区内容等于 ch1；(c) `git log` 多出一个"rollback"提交（历史不丢）。
-- [ ] **Step 2: 实现前滚式回滚**：
+- [x] **Step 1: 写测试**：建 tmp 仓库（默认分支命名为 `main`），打两个 ch tag，回滚到 ch1 后断言：(a) 仍在原分支（`git symbolic-ref HEAD` 成功且为 main）；(b) 工作区内容等于 ch1；(c) `git log` 多出一个"rollback"提交（历史不丢）。
+- [x] **Step 2: 实现前滚式回滚**：
 
 ```python
 def rollback(self, chapter: int) -> bool:
@@ -66,8 +66,8 @@ def rollback(self, chapter: int) -> bool:
     return True
 ```
 
-- [ ] **Step 3: 删除所有 `checkout master` 硬编码**；任何需要分支名的地方用 `git symbolic-ref --short HEAD` 探测。
-- [ ] **Step 4: 测试通过后提交** `fix: rollback is forward-only, never detaches HEAD`。
+- [x] **Step 3: 删除所有 `checkout master` 硬编码**；任何需要分支名的地方用 `git symbolic-ref --short HEAD` 探测。
+- [x] **Step 4: 测试通过后提交** `fix: rollback is forward-only, never detaches HEAD`。
 
 ### Task 3: 无 Git 时的降级备份必须覆盖正文，或醒目声明没有
 

@@ -34,6 +34,11 @@ def _run_git(project_root, *args):
     )
 
 
+def _configure_git_identity(project_root):
+    assert _run_git(project_root, "config", "user.name", "Test Author").returncode == 0
+    assert _run_git(project_root, "config", "user.email", "author@example.com").returncode == 0
+
+
 def test_backup_aborts_when_git_commit_fails_without_identity(tmp_path, monkeypatch, capsys):
     isolated_home = tmp_path / "home"
     isolated_home.mkdir()
@@ -60,3 +65,35 @@ def test_backup_aborts_when_git_commit_fails_without_identity(tmp_path, monkeypa
     output = capsys.readouterr().out
     assert "备份失败" in output
     assert _run_git(project_root, "rev-parse", "--verify", "ch0001").returncode != 0
+
+
+def test_rollback_restores_files_on_current_branch_with_new_commit(tmp_path):
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    assert _run_git(project_root, "init", "-b", "main").returncode == 0
+    _configure_git_identity(project_root)
+
+    manuscript_dir = project_root / "正文"
+    manuscript_dir.mkdir()
+    chapter_file = manuscript_dir / "第0001章-test.md"
+
+    chapter_file.write_text("第一版", encoding="utf-8")
+    assert _run_git(project_root, "add", ".").returncode == 0
+    assert _run_git(project_root, "commit", "-m", "Chapter 1").returncode == 0
+    assert _run_git(project_root, "tag", "ch0001").returncode == 0
+
+    chapter_file.write_text("第二版", encoding="utf-8")
+    assert _run_git(project_root, "add", ".").returncode == 0
+    assert _run_git(project_root, "commit", "-m", "Chapter 2").returncode == 0
+    assert _run_git(project_root, "tag", "ch0002").returncode == 0
+    before_count = int(_run_git(project_root, "rev-list", "--count", "HEAD").stdout.strip())
+
+    manager = GitBackupManager(str(project_root))
+
+    assert manager.rollback(1) is True
+
+    assert _run_git(project_root, "symbolic-ref", "--short", "HEAD").stdout.strip() == "main"
+    assert chapter_file.read_text(encoding="utf-8") == "第一版"
+    after_count = int(_run_git(project_root, "rev-list", "--count", "HEAD").stdout.strip())
+    assert after_count == before_count + 1
+    assert "rollback: 恢复到 ch0001 备份点" in _run_git(project_root, "log", "-1", "--format=%s").stdout
